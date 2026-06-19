@@ -1,0 +1,13 @@
+[project]
+name = "mark-coach-mcp"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "chromadb>=0.6.0",
+    "yt-dlp>=2024.0.0",
+]
+
+[project.scripts]
+index = "src.indexer:main"
+serve = "src.server:main"
