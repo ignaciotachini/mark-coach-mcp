@@ -73,9 +73,17 @@ def main():
         metadata={"hnsw:space": "cosine"},
     )
 
-    processed = set()
+    processed_ids = set()
     if PROCESSED_LOG.exists():
-        processed = set(PROCESSED_LOG.read_text().splitlines())
+        for line in PROCESSED_LOG.read_text().splitlines():
+            line = line.strip()
+            # Soporta entradas legacy con ruta completa: extrae el video id si esta
+            if line and len(line) == 11 and re.match(r"^[a-zA-Z0-9_-]+$", line):
+                processed_ids.add(line)
+            else:
+                m = re.search(r"\[([a-zA-Z0-9_-]{11})\]", line)
+                if m:
+                    processed_ids.add(m.group(1))
 
     vtt_files = glob.glob(os.path.join(transcripts_dir, "**", "*.vtt"), recursive=True)
     vtt_files += glob.glob(os.path.join(transcripts_dir, "*.vtt"))
@@ -87,7 +95,9 @@ def main():
 
     new_count = 0
     for vtt_file in sorted(vtt_files):
-        if vtt_file in processed:
+        video_id = extract_video_id(vtt_file)
+
+        if video_id in processed_ids:
             print(f"  skip  {os.path.basename(vtt_file)}")
             continue
 
@@ -96,11 +106,10 @@ def main():
             print(f"  empty {os.path.basename(vtt_file)}")
             continue
 
-        video_id = extract_video_id(vtt_file)
         title = extract_title(vtt_file, video_id)
         chunks = chunk_text(text)
 
-        collection.add(
+        collection.upsert(
             documents=chunks,
             ids=[f"{video_id}_chunk_{i}" for i in range(len(chunks))],
             metadatas=[
@@ -115,7 +124,8 @@ def main():
         )
 
         with open(PROCESSED_LOG, "a") as f:
-            f.write(vtt_file + "\n")
+            f.write(video_id + "\n")
+        processed_ids.add(video_id)
 
         print(f"  ok    {title[:60]} ({len(chunks)} chunks)")
         new_count += 1

@@ -13,85 +13,114 @@ Ask Claude to analyze your Ads Manager screenshots, debug campaigns, or get stra
 
 All data stays on your machine. No API keys required.
 
-## Quick start
+## Install (one line)
 
 ```bash
-git clone https://github.com/BlueNacho/mark-coach-mcp
-cd mark-coach-mcp
-chmod +x setup.sh
+curl -fsSL https://raw.githubusercontent.com/BlueNacho/mark-coach-mcp/main/install.sh | bash
+```
+
+That's it. The installer will:
+
+1. Clone the repo to `~/mark-coach-mcp`
+2. Install `uv` (Python package manager) if needed
+3. Install `yt-dlp` if needed
+4. Install Python dependencies
+5. Download Mark's transcripts (~100 videos, a few minutes)
+6. Index everything into a local vector DB
+7. **Auto-detect** Claude Code and/or Claude Desktop on your machine and configure both
+8. Install the `mark-coach` skill globally for Claude Code
+
+After it finishes, restart Claude Desktop / Claude Code and start using `/mark-coach`.
+
+> Want it somewhere else? `INSTALL_DIR=~/projects/mark-coach-mcp curl -fsSL ... | bash`
+
+## Manual install
+
+```bash
+git clone https://github.com/BlueNacho/mark-coach-mcp ~/mark-coach-mcp
+cd ~/mark-coach-mcp
 ./setup.sh
 ```
 
-The setup script will:
-- Install `uv` (Python package manager) if not present
-- Install `yt-dlp` if not present
-- Install Python dependencies
-- Download transcripts from Mark's channel (or use your own)
-- Index everything into a local vector DB
-- Print the exact command to connect it to Claude
+## Using it
 
-## Connect to Claude Code
+### Claude Code
 
-After running setup, add the MCP server:
+The skill is installed globally. Just open Claude Code and type:
 
-```bash
-claude mcp add mark-coach -- uv --directory "/path/to/mark-coach-mcp" run src/server.py
+```
+/mark-coach
 ```
 
-Or add manually to `~/.claude.json`:
+Or describe an ecommerce / Facebook Ads question and the skill activates automatically.
 
-```json
-{
-  "mcpServers": {
-    "mark-coach": {
-      "command": "uv",
-      "args": ["run", "src/server.py"],
-      "cwd": "/path/to/mark-coach-mcp"
-    }
-  }
-}
-```
+### Claude Desktop
+
+After restart, the `search_mark_knowledge` tool is available. To get the persona/voice, create a **Project** in Claude.ai (or Cowork Space) and paste the contents of `skills/mark-coach.md` into the project's Custom Instructions.
 
 ## Adding new videos
 
-When Mark publishes new content, just run:
+When Mark publishes new content:
+
+```bash
+cd ~/mark-coach-mcp
+./setup.sh
+```
+
+The setup script is idempotent — it re-downloads only new videos and re-indexes only the new ones (existing indexed videos are skipped via `data/processed.txt`).
+
+## Using your own transcripts
+
+If you have your own `.vtt` files (from any creator), drop them into `transcripts/` and run:
 
 ```bash
 ./setup.sh
 ```
 
-It skips already-indexed videos and only processes new ones.
-
-## Using your own transcripts
-
-If you already have `.vtt` files, copy them to the `transcripts/` folder and run:
-
-```bash
-uv run src/indexer.py transcripts/
-```
-
-## Using the skill in Claude Code
-
-Copy `skills/mark-coach.md` to your Claude skills directory, then activate with `/mark-coach` in any conversation.
+The indexer accepts any YouTube `.vtt` file — it strips timestamps, dedupes, and chunks the text.
 
 ## Project structure
 
 ```
 mark-coach-mcp/
-  setup.sh          ← one-command setup
-  pyproject.toml    ← Python dependencies (managed by uv)
+  install.sh         ← one-line bootstrap (clones repo, runs setup.sh)
+  setup.sh           ← installs deps, downloads/indexes, wires Claude
+  pyproject.toml     ← Python dependencies (managed by uv)
   src/
-    indexer.py      ← converts .vtt transcripts → ChromaDB
-    server.py       ← MCP server with search tool
+    indexer.py       ← converts .vtt transcripts → ChromaDB
+    server.py        ← MCP server with search_mark_knowledge tool
   skills/
-    mark-coach.md   ← Claude skill / persona definition
-  transcripts/      ← your .vtt files (gitignored)
-  data/             ← ChromaDB vector store (gitignored)
+    mark-coach.md    ← Claude skill / persona definition
+  transcripts/       ← your .vtt files (gitignored)
+  data/              ← ChromaDB vector store (gitignored)
 ```
 
 ## Requirements
 
 - macOS or Linux
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/) (installed automatically by setup.sh)
-- Claude Code or Claude Desktop
+- `git` (preinstalled on macOS via Xcode CLT, on Linux via your package manager)
+- Claude Code and/or Claude Desktop
+
+Everything else (`uv`, `yt-dlp`, Python deps) is installed automatically.
+
+## Troubleshooting
+
+### MCP says "Failed to connect" after a reboot
+The MCP needs the **absolute path** to `uv`. The setup script handles this automatically; if you registered manually, make sure your `claude mcp add` command uses the full path (e.g. `/Users/you/.local/bin/uv`, not just `uv`).
+
+### Re-run setup
+The setup script is safe to run any number of times. It detects what's already in place and skips it.
+
+```bash
+cd ~/mark-coach-mcp && ./setup.sh
+```
+
+### Uninstall
+
+```bash
+claude mcp remove -s user mark-coach 2>/dev/null
+rm -rf ~/.claude/skills/mark-coach
+rm -rf ~/mark-coach-mcp
+```
+
+For Claude Desktop, edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `~/.config/Claude/claude_desktop_config.json` (Linux) and remove the `mark-coach` entry from `mcpServers`.
