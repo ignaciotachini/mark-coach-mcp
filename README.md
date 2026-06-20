@@ -15,13 +15,21 @@ All data stays on your machine. No API keys required.
 
 ## Install (one line)
 
+### macOS / Linux
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/BlueNacho/mark-coach-mcp/main/install.sh | bash
 ```
 
+### Windows (PowerShell)
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/BlueNacho/mark-coach-mcp/main/install.ps1 | iex
+```
+
 That's it. The installer will:
 
-1. Clone the repo to `~/mark-coach-mcp`
+1. Clone the repo to `~/mark-coach-mcp` (or `%USERPROFILE%\mark-coach-mcp` on Windows)
 2. Install `uv` (Python package manager) if needed
 3. Install `yt-dlp` if needed
 4. Install Python dependencies
@@ -32,15 +40,29 @@ That's it. The installer will:
 
 After it finishes, restart Claude Desktop / Claude Code and start using `/mark-coach`.
 
-> Want it somewhere else? `INSTALL_DIR=~/projects/mark-coach-mcp curl -fsSL ... | bash`
+> **Pick a different install dir?**
+> macOS/Linux: `INSTALL_DIR=~/projects/mark-coach-mcp curl -fsSL ... | bash`
+> Windows: `$env:INSTALL_DIR = "D:\projects\mark-coach-mcp"; iwr -useb ... | iex`
 
 ## Manual install
+
+### macOS / Linux
 
 ```bash
 git clone https://github.com/BlueNacho/mark-coach-mcp ~/mark-coach-mcp
 cd ~/mark-coach-mcp
 ./setup.sh
 ```
+
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/BlueNacho/mark-coach-mcp $env:USERPROFILE\mark-coach-mcp
+cd $env:USERPROFILE\mark-coach-mcp
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+> If you prefer **WSL** on Windows, follow the macOS/Linux instructions inside your WSL terminal — the bash scripts work as-is.
 
 ## Using it
 
@@ -97,8 +119,11 @@ mark-coach-mcp/
 
 ## Requirements
 
-- macOS or Linux
-- `git` (preinstalled on macOS via Xcode CLT, on Linux via your package manager)
+- macOS, Linux, or Windows 10/11
+- `git`
+  - macOS: included with Xcode CLT (`xcode-select --install`)
+  - Linux: install via your package manager
+  - Windows: https://git-scm.com/download/win
 - Claude Code and/or Claude Desktop
 
 Everything else (`uv`, `yt-dlp`, Python deps) is installed automatically.
@@ -106,7 +131,14 @@ Everything else (`uv`, `yt-dlp`, Python deps) is installed automatically.
 ## Troubleshooting
 
 ### MCP says "Failed to connect" after a reboot
-The MCP needs the **absolute path** to `uv`. The setup script handles this automatically; if you registered manually, make sure your `claude mcp add` command uses the full path (e.g. `/Users/you/.local/bin/uv`, not just `uv`).
+The MCP needs the **absolute path** to `uv`. The setup script handles this automatically; if you registered manually, make sure your `claude mcp add` command uses the full path (e.g. `/Users/you/.local/bin/uv` on macOS, `C:\Users\you\.local\bin\uv.exe` on Windows — not just `uv`).
+
+### Windows: "running scripts is disabled on this system"
+PowerShell blocks unsigned scripts by default. Run setup with the bypass flag:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+The one-line installer already does this.
 
 ### Re-run setup
 The setup script is safe to run any number of times. It detects what's already in place and skips it.
@@ -117,10 +149,21 @@ cd ~/mark-coach-mcp && ./setup.sh
 
 ### Uninstall
 
+**macOS / Linux:**
 ```bash
 claude mcp remove -s user mark-coach 2>/dev/null
 rm -rf ~/.claude/skills/mark-coach
 rm -rf ~/mark-coach-mcp
 ```
 
-For Claude Desktop, edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `~/.config/Claude/claude_desktop_config.json` (Linux) and remove the `mark-coach` entry from `mcpServers`.
+**Windows (PowerShell):**
+```powershell
+claude mcp remove -s user mark-coach 2>$null
+Remove-Item -Recurse -Force $env:USERPROFILE\.claude\skills\mark-coach
+Remove-Item -Recurse -Force $env:USERPROFILE\mark-coach-mcp
+```
+
+For Claude Desktop, edit the config file and remove the `mark-coach` entry from `mcpServers`:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
